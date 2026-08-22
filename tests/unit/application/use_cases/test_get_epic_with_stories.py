@@ -60,7 +60,7 @@ class TestGetEpicWithStories:
 
     async def test_epic_not_found_raises_exception(self, mock_jira_repo):
         # Arrange
-        epic_key = "PROJ-UNKNOWN"
+        epic_key = "PROJ-999999"
         mock_jira_repo.get_epic.return_value = None
 
         use_case = GetEpicWithStories(jira_repository=mock_jira_repo)

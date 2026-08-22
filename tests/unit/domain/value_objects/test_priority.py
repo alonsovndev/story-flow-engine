@@ -34,6 +34,13 @@ class TestPriorityCreation:
         p = Priority.from_jira_name("Lowest")
         assert p.level == PriorityLevel.LOWEST
 
+    def test_from_jira_name_does_not_substring_match(self):
+        # Names containing substrings of "lowest" ("west", "owest")
+        # must fall back to MEDIUM, not map to LOWEST.
+        for name in ["West", "Owest"]:
+            p = Priority.from_jira_name(name)
+            assert p.level == PriorityLevel.MEDIUM
+
     def test_from_jira_name_unknown_defaults_to_medium(self):
         p = Priority.from_jira_name("Unknown")
         assert p.level == PriorityLevel.MEDIUM

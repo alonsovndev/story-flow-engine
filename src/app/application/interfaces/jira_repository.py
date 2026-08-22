@@ -27,6 +27,20 @@ class JiraRepository(ABC):
         pass
 
     @abstractmethod
+    async def create_epic(self, summary: str, description: str) -> Epic:
+        """
+        Creates a new Epic in Jira.
+
+        Args:
+            summary: The epic summary/title.
+            description: The epic description.
+
+        Returns:
+            The created Epic entity, including the new ID from Jira.
+        """
+        pass
+
+    @abstractmethod
     async def get_user_story(self, issue_id: IssueId) -> Optional[UserStory]:
         """
         Retrieves a User Story by its IssueId.

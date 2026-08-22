@@ -22,3 +22,7 @@ jira>=3.5.0
 # Interactive CLI
 typer>=0.9.0
 InquirerPy
+
+# Dev tooling (lint, type-check)
+ruff>=0.8.0
+mypy>=1.13.0

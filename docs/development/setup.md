@@ -20,7 +20,7 @@ Same as [installation](../getting-started/installation.md), plus:
 
 | What | Convention | Examples |
 |------|-----------|----------|
-| Classes | PascalCase | `Epic`, `UserStory`, `JiraApiRepositoryImpl` |
+| Classes | PascalCase | `Epic`, `UserStory`, `JiraEpicRepository` |
 | Functions/methods | camelCase | `get_epic`, `find_epics_by_project` |
 | Variables | camelCase | `epicId`, `storyKey`, `jiraConfig` |
 | Files | snake_case | `epic.py`, `user_story.py`, `jira_repository.py` |
@@ -81,20 +81,28 @@ For running tests, the test config is loaded automatically by test fixtures.
 
 ## Directory Structure for New Features
 
-When adding features, follow the existing layer structure:
+When adding features, follow the existing vertical-slice structure — each feature owns its full stack:
 
 ```
 src/app/
-├── domain/
-│   ├── entities/       # New entities with factory methods
-│   ├── value_objects/  # New value objects (frozen dataclasses)
-│   └── exceptions/     # New domain exceptions
-├── application/
-│   ├── use_cases/      # New use case classes
-│   ├── dtos/           # New DTOs
-│   ├── interfaces/     # New repository ports (ABCs)
-│   └── mappers/        # New entity-to-DTO mappers
+├── core/
+│   └── domain/              # Shared kernel: issue abstractions, value objects, exceptions
+├── features/
+│   ├── epic/                # Reference feature slice
+│   │   ├── application/     # Use cases, ports (ABCs), DTOs, mappers
+│   │   ├── domain/          # Entities with factory methods
+│   │   └── infrastructure/  # Repository implementation + dependencies.py composition root
+│   ├── story/
+│   └── <new-feature>/       # Copy the epic layout: domain → application → infrastructure
 ├── infrastructure/
-│   └── external/       # New repository implementations
-└── presentation/       # New CLI commands
+│   └── external/jira/       # Cross-feature adapters support (settings, parsing)
+├── presentation/            # CLI shell registering feature commands
+└── shared/                  # Cross-cutting utilities (logging, retry)
 ```
+
+**Rules for new features:**
+
+1. Depend only on `core/` and `shared/` — plus other features' public API (`ports.py`, `dtos.py`, `mappers.py`) when collaboration is required.
+2. Keep `domain/` framework-agnostic; no imports from `application` or `infrastructure`.
+3. Register new CLI commands in `presentation/cli.py`, delegating to handlers inside the feature's own `presentation/` module.
+4. Mirror the source tree in `tests/unit/features/<feature>/` and add adapter tests under `tests/integration/<feature>/`.

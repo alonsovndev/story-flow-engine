@@ -11,4 +11,5 @@ __all__ = [
     "InvalidStatusTransitionException",
     "DuplicateEntityException",
     "BusinessRuleViolationException",
+    "UnauthorizedWorkspaceAccess",
 ]

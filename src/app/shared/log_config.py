@@ -27,20 +27,39 @@ _user_id_ctx: ContextVar[str] = ContextVar("user_id", default="-")
 # context in both formatters.
 _RESERVED_ATTRS = frozenset(
     (
-        "name", "msg", "args", "levelname", "levelno", "pathname", "filename",
-        "module", "exc_info", "exc_text", "stack_info", "lineno", "funcName",
-        "created", "msecs", "relativeCreated", "thread", "threadName",
-        "processName", "process", "taskName", "message",
-        "request_id", "user_id",
+        "name",
+        "msg",
+        "args",
+        "levelname",
+        "levelno",
+        "pathname",
+        "filename",
+        "module",
+        "exc_info",
+        "exc_text",
+        "stack_info",
+        "lineno",
+        "funcName",
+        "created",
+        "msecs",
+        "relativeCreated",
+        "thread",
+        "threadName",
+        "processName",
+        "process",
+        "taskName",
+        "message",
+        "request_id",
+        "user_id",
     )
 )
 
 # ANSI color codes — no external dependency needed
 _COLORS: dict[str, str] = {
-    "DEBUG": "\033[36m",       # cyan
-    "INFO": "\033[32m",        # green
-    "WARNING": "\033[33m",     # yellow
-    "ERROR": "\033[31m",       # red
+    "DEBUG": "\033[36m",  # cyan
+    "INFO": "\033[32m",  # green
+    "WARNING": "\033[33m",  # yellow
+    "ERROR": "\033[31m",  # red
     "CRITICAL": "\033[1;31m",  # bold red
 }
 _RESET = "\033[0m"
@@ -53,6 +72,7 @@ def _extra_fields(record: logging.LogRecord) -> dict:
         for key, value in record.__dict__.items()
         if key not in _RESERVED_ATTRS
     }
+
 
 _configured = False
 
@@ -112,9 +132,9 @@ class _PlainFormatter(logging.Formatter):
         self._colored = colored
 
     def format(self, record: logging.LogRecord) -> str:
-        timestamp = datetime.fromtimestamp(
-            record.created, tz=timezone.utc
-        ).strftime("%H:%M:%S")
+        timestamp = datetime.fromtimestamp(record.created, tz=timezone.utc).strftime(
+            "%H:%M:%S"
+        )
         ids = [
             f"{label}={value}"
             for label, value in (
@@ -131,8 +151,7 @@ class _PlainFormatter(logging.Formatter):
             level = f"{color}{level}{_RESET}"
 
         line = (
-            f"{timestamp} [{level:<5}] "
-            f"{context}{record.name} — {record.getMessage()}"
+            f"{timestamp} [{level:<5}] {context}{record.name} — {record.getMessage()}"
         )
         extras = _extra_fields(record)
         if extras:

@@ -1,5 +1,3 @@
-import pytest
-
 from src.app.domain.exceptions import (
     DomainException,
     EntityNotFoundException,

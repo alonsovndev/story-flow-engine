@@ -17,10 +17,11 @@ class StoryStatus(str, Enum):
 class UserStory:
     """
     Domain entity representing a Jira User Story.
-    
+
     A User Story describes a feature from the end-user's perspective.
     Use the factory method `create()` to instantiate.
     """
+
     id: IssueId
     summary: str
     description: str
@@ -63,7 +64,7 @@ class UserStory:
     ) -> "UserStory":
         """
         Factory method to create a UserStory instance.
-        
+
         Args:
             key: Jira issue key (e.g., "PROJ-124")
             numeric_id: Jira numeric issue ID
@@ -81,21 +82,29 @@ class UserStory:
             acceptance_criteria: List of acceptance criteria (optional)
             sprint: Sprint name (optional)
             story_status: Story-specific status (optional)
-            
+
         Returns:
             New UserStory instance
-            
+
         Raises:
             BusinessRuleViolationException: If required fields are missing or invalid
         """
         if not key:
-            raise BusinessRuleViolationException("UserStory key is required", details="key cannot be empty")
+            raise BusinessRuleViolationException(
+                "UserStory key is required", details="key cannot be empty"
+            )
         if not summary or not summary.strip():
-            raise BusinessRuleViolationException("UserStory summary is required", entity_key=key)
+            raise BusinessRuleViolationException(
+                "UserStory summary is required", entity_key=key
+            )
         if numeric_id < 0:
-            raise BusinessRuleViolationException("Numeric ID must be non-negative", entity_key=key)
+            raise BusinessRuleViolationException(
+                "Numeric ID must be non-negative", entity_key=key
+            )
         if story_points is not None and story_points < 0:
-            raise BusinessRuleViolationException("Story points must be non-negative", entity_key=key)
+            raise BusinessRuleViolationException(
+                "Story points must be non-negative", entity_key=key
+            )
 
         return cls._create(
             id=IssueId(key=key, numeric_id=numeric_id),

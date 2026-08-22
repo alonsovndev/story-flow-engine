@@ -40,8 +40,5 @@ class EpicDataMapper:
             story_points=epic.story_points.value if epic.story_points else None,
             created_at=epic.created_at,
             updated_at=epic.updated_at,
-            user_stories=[
-                EpicDataMapper.to_user_story_dto(story) for story in stories
-            ],
+            user_stories=[EpicDataMapper.to_user_story_dto(story) for story in stories],
         )
-

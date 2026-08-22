@@ -4,7 +4,7 @@ from .base import DomainException
 class DuplicateEntityException(DomainException):
     """
     Raised when attempting to create an entity that already exists.
-    
+
     Attributes:
         entity_type: The type of entity (e.g., "Epic", "UserStory")
         identifier: The key or ID of the duplicate entity

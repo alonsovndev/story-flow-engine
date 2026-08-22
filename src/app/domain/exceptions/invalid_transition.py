@@ -6,7 +6,7 @@ from .base import DomainException
 class InvalidStatusTransitionException(DomainException):
     """
     Raised when an entity is moved to an invalid status.
-    
+
     Attributes:
         entity_key: The key of the entity
         current_status: The current status

@@ -8,16 +8,19 @@ from src.app.domain.exceptions import BusinessRuleViolationException
 class Label:
     """
     Value object representing a Jira label.
-    
+
     Immutable - labels are simple string identifiers.
     """
+
     name: str
 
     def __post_init__(self):
         if not self.name:
             raise BusinessRuleViolationException("Label name cannot be empty")
         if len(self.name) > 255:
-            raise BusinessRuleViolationException("Label name cannot exceed 255 characters")
+            raise BusinessRuleViolationException(
+                "Label name cannot exceed 255 characters"
+            )
 
     def __str__(self) -> str:
         return self.name
@@ -43,9 +46,10 @@ class Label:
 class LabelSet:
     """
     Value object representing a collection of labels.
-    
+
     Immutable - operations return new instances.
     """
+
     labels: tuple[Label, ...]
 
     def __post_init__(self):
@@ -100,4 +104,6 @@ class LabelSet:
 
     def remove(self, label: Label) -> "LabelSet":
         """Returns a new LabelSet with the label removed."""
-        return LabelSet(labels=tuple(l for l in self.labels if l != label))
+        return LabelSet(
+            labels=tuple(existing for existing in self.labels if existing != label)
+        )

@@ -4,7 +4,7 @@ from .base import DomainException
 class EntityNotFoundException(DomainException):
     """
     Raised when an entity cannot be found in the repository.
-    
+
     Attributes:
         entity_type: The type of entity that was not found (e.g., "Epic", "UserStory")
         identifier: The key or ID used to look up the entity

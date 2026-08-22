@@ -6,7 +6,7 @@ from .base import DomainException
 class BusinessRuleViolationException(DomainException):
     """
     Raised when a domain business rule is violated.
-    
+
     Attributes:
         rule: The business rule that was violated
         entity_key: The key of the entity involved (if applicable)

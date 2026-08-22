@@ -1,0 +1,122 @@
+from datetime import datetime
+from unittest.mock import AsyncMock
+
+import pytest
+
+from src.app.domain.entities import Epic, IssueStatus, UserStory
+from src.app.presentation import cli
+
+
+def make_epic(key: str = "OPH-1") -> Epic:
+    now = datetime(2026, 1, 1, 10, 0, 0)
+    return Epic.create(
+        key=key,
+        numeric_id=1,
+        summary="Foundational Setup",
+        description="Setup description",
+        status=IssueStatus.TODO,
+        created_at=now,
+        updated_at=now,
+    )
+
+
+@pytest.fixture
+def mock_repository(monkeypatch):
+    """Replace the composition-root factory with an async mock."""
+    repository = AsyncMock()
+    monkeypatch.setattr(cli, "get_jira_repository", lambda: repository)
+    return repository
+
+
+class TestFetchEpic:
+    def test_prints_epic_and_story_list(self, mock_repository, capsys):
+        story = UserStory.create(
+            key="OPH-2",
+            numeric_id=2,
+            summary="First story",
+            description="Do things",
+            status=IssueStatus.IN_PROGRESS,
+            created_at=datetime(2026, 1, 1),
+            updated_at=datetime(2026, 1, 2),
+            epic_key="OPH-1",
+        )
+        mock_repository.get_epic.return_value = make_epic()
+        mock_repository.get_stories_in_epic.return_value = [story]
+
+        cli.fetch_epic("OPH-1")
+
+        out = capsys.readouterr().out
+        assert "OPH-1" in out
+        assert "Foundational Setup" in out
+        assert "Stories (1)" in out
+        assert "OPH-2" in out
+
+    def test_not_found_prints_friendly_message(self, mock_repository, capsys):
+        mock_repository.get_epic.return_value = None
+
+        cli.fetch_epic("OPH-404")
+
+        assert "Epic not found: OPH-404" in capsys.readouterr().out
+
+    def test_invalid_key_is_reported_without_repo_call(self, mock_repository, capsys):
+        cli.fetch_epic("not-a-jira-key")
+
+        out = capsys.readouterr().out
+        assert "Error fetching epic" in out
+        mock_repository.get_epic.assert_not_called()
+
+    def test_unexpected_error_keeps_session_alive(self, mock_repository, capsys):
+        mock_repository.get_epic.side_effect = RuntimeError("boom")
+
+        cli.fetch_epic("OPH-1")
+
+        assert "Unexpected error fetching epic" in capsys.readouterr().out
+
+
+class TestCreateEpic:
+    def test_creates_epic_from_markdown_file(self, mock_repository, tmp_path, capsys):
+        epic_file = tmp_path / "epic.md"
+        epic_file.write_text(
+            "# Epic\n\n"
+            "**Epic Title**: Foundational Setup\n"
+            "**Epic Key**: EPIC-0\n"
+            "**Epic Description:**\n"
+            "Problem statement.\n",
+            encoding="utf-8",
+        )
+        mock_repository.create_epic.return_value = Epic.create(
+            key="OPH-101",
+            numeric_id=101,
+            summary="EPIC-0 - Foundational Setup",
+            description="Problem statement.",
+            status=IssueStatus.TODO,
+            created_at=datetime(2026, 1, 1),
+            updated_at=datetime(2026, 1, 1),
+        )
+
+        cli.create_epic(str(epic_file))
+
+        out = capsys.readouterr().out
+        assert "Epic Successfully Created!" in out
+        assert "OPH-101" in out
+        mock_repository.create_epic.assert_awaited_once_with(
+            summary="EPIC-0 - Foundational Setup",
+            description="Problem statement.",
+        )
+
+    def test_missing_file_reports_error(self, tmp_path, capsys):
+        cli.create_epic(str(tmp_path / "does-not-exist.md"))
+
+        assert "Cannot read file" in capsys.readouterr().out
+
+    def test_markdown_missing_fields_reports_error(
+        self, mock_repository, tmp_path, capsys
+    ):
+        bad_file = tmp_path / "bad.md"
+        bad_file.write_text("**Epic Key**: EPIC-0\n", encoding="utf-8")
+
+        cli.create_epic(str(bad_file))
+
+        out = capsys.readouterr().out
+        assert "Invalid file or content" in out
+        mock_repository.create_epic.assert_not_called()

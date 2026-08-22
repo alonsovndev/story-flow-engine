@@ -1,9 +1,10 @@
 from src.app.domain.exceptions.base import DomainException
 
+
 class UnauthorizedWorkspaceAccess(DomainException):
     """
     Exception raised when access is attempted on an unauthorized workspace.
-    
+
     Attributes:
         workspace_key -- workspace key attempted
         allowed_workspaces -- list of allowed workspace keys

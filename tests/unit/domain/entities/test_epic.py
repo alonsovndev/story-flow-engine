@@ -1,8 +1,7 @@
 import pytest
 from datetime import datetime
 
-from src.app.domain.entities import Epic, IssueStatus, IssueType
-from src.app.domain.value_objects import IssueId, StoryPoints, Priority, LabelSet
+from src.app.domain.entities import Epic, IssueStatus
 from src.app.domain.exceptions import BusinessRuleViolationException
 
 
@@ -156,5 +155,6 @@ class TestIssueStatus:
 
     def test_unknown_status_raises(self):
         from src.app.domain.exceptions import InvalidStatusTransitionException
+
         with pytest.raises(InvalidStatusTransitionException):
             IssueStatus.from_jira_status("Custom Status")

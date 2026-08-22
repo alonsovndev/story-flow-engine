@@ -1,9 +1,11 @@
 import pytest
 import respx
 from httpx import Response
-from src.app.domain.entities import Epic
+from src.app.domain.entities import Epic, IssueStatus, UserStory
 from src.app.domain.value_objects import IssueId, Priority
-from src.app.infrastructure.external.jira.jira_api_repository_impl import JiraApiRepositoryImpl
+from src.app.infrastructure.external.jira.jira_api_repository_impl import (
+    JiraApiRepositoryImpl,
+)
 from src.app.domain.exceptions import BusinessRuleViolationException
 from datetime import datetime
 
@@ -48,9 +50,7 @@ async def test_get_epic_success(jira_repository):
         },
     }
 
-    respx.get(
-        f"https://test-jira.atlassian.net/rest/api/3/issue/{epic_key}"
-    ).mock(
+    respx.get(f"https://test-jira.atlassian.net/rest/api/3/issue/{epic_key}").mock(
         return_value=Response(200, json=mock_response)
     )
 
@@ -69,21 +69,89 @@ async def test_get_epic_success(jira_repository):
 
 @pytest.mark.asyncio
 @respx.mock
+async def test_get_stories_in_epic_success(jira_repository):
+    """
+    Test retrieval of all user stories belonging to an epic.
+    """
+    # Arrange
+    epic_key = "PROJ-1"
+    mock_response = {
+        "issues": [
+            {
+                "id": "20001",
+                "key": "PROJ-2",
+                "fields": {
+                    "summary": "First story",
+                    "description": "Do things",
+                    "status": {"name": "In Progress"},
+                    "reporter": {"displayName": "Test User"},
+                    "priority": {"name": "High"},
+                    "labels": ["backend"],
+                    "customfield_10011": 5,
+                    "created": "2026-01-01T10:00:00.000-0500",
+                    "updated": "2026-01-02T11:00:00.000-0500",
+                },
+            },
+            {
+                "id": "20002",
+                "key": "PROJ-3",
+                "fields": {
+                    "summary": "Second story",
+                    "description": "Do more things",
+                    "status": {"name": "Done"},
+                    "created": "2026-01-01T10:00:00.000-0500",
+                    "updated": "2026-01-03T11:00:00.000-0500",
+                },
+            },
+        ]
+    }
+
+    respx.post("https://test-jira.atlassian.net/rest/api/3/search").mock(
+        return_value=Response(200, json=mock_response)
+    )
+
+    # Act
+    stories = await jira_repository.get_stories_in_epic(IssueId.from_string(epic_key))
+
+    # Assert
+    assert [story.key for story in stories] == ["PROJ-2", "PROJ-3"]
+    first = stories[0]
+    assert isinstance(first, UserStory)
+    assert first.summary == "First story"
+    assert first.status == IssueStatus.IN_PROGRESS
+    assert first.priority == Priority.high()
+    assert first.story_points.value == 5
+    assert first.epic_link is not None
+    assert str(first.epic_link) == epic_key
+    assert stories[1].priority is None
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_get_stories_in_epic_empty(jira_repository):
+    """
+    Test that an epic without stories yields an empty list.
+    """
+    # Arrange
+    respx.post("https://test-jira.atlassian.net/rest/api/3/search").mock(
+        return_value=Response(200, json={"issues": []})
+    )
+
+    # Act
+    stories = await jira_repository.get_stories_in_epic(IssueId.from_string("PROJ-1"))
+
+    # Assert
+    assert stories == []
+
+
+@pytest.mark.asyncio
+@respx.mock
 async def test_create_epic_success(jira_repository):
     """
     Test successful creation of an Epic in the Jira API.
     """
     # Arrange
     epic_key = "PROJ-100"
-    input_payload = {
-        "fields": {
-            "project": {"key": "PROJ-1"},
-            "summary": "Test Epic Creation",
-            "description": "A test epic for unit testing integration with Jira.",
-            "issuetype": {"name": "Epic"},
-            "priority": {"name": "High"},
-        }
-    }
 
     mock_response = {
         "id": "10001",
@@ -98,14 +166,14 @@ async def test_create_epic_success(jira_repository):
         },
     }
 
-    respx.post(f"https://test-jira.atlassian.net/rest/api/3/issue").mock(
+    respx.post("https://test-jira.atlassian.net/rest/api/3/issue").mock(
         return_value=Response(201, json=mock_response)
     )
 
     # Act
     epic = await jira_repository.create_epic(
         summary="Test Epic Creation",
-        description="A test epic for unit testing integration with Jira."
+        description="A test epic for unit testing integration with Jira.",
     )
 
     # Assert
@@ -127,14 +195,16 @@ async def test_create_epic_unauthorized(jira_repository):
     """
     # Arrange
     respx.post("https://test-jira.atlassian.net/rest/api/3/issue").mock(
-        return_value=Response(401, json={"errorMessages": ["Unauthorized"], "errors": {}})
+        return_value=Response(
+            401, json={"errorMessages": ["Unauthorized"], "errors": {}}
+        )
     )
 
     # Act & Assert
     with pytest.raises(BusinessRuleViolationException) as exc_info:
         await jira_repository.create_epic(
             summary="Unauthorized Epic",
-            description="Testing unauthorized response handling."
+            description="Testing unauthorized response handling.",
         )
 
     assert "Unauthorized" in str(exc_info.value)
@@ -148,14 +218,16 @@ async def test_create_epic_internal_server_error(jira_repository):
     """
     # Arrange
     respx.post("https://test-jira.atlassian.net/rest/api/3/issue").mock(
-        return_value=Response(500, json={"errorMessages": ["Internal Server Error"], "errors": {}})
+        return_value=Response(
+            500, json={"errorMessages": ["Internal Server Error"], "errors": {}}
+        )
     )
 
     # Act & Assert
     with pytest.raises(BusinessRuleViolationException) as exc_info:
         await jira_repository.create_epic(
             summary="Epic causing 500",
-            description="Testing internal server error handling."
+            description="Testing internal server error handling.",
         )
 
     assert "Internal Server Error" in str(exc_info.value)
@@ -169,14 +241,20 @@ async def test_create_epic_invalid_payload(jira_repository):
     """
     # Arrange
     respx.post("https://test-jira.atlassian.net/rest/api/3/issue").mock(
-        return_value=Response(400, json={"errorMessages": ["Invalid payload"], "errors": {"summary": "Summary is required"}})
+        return_value=Response(
+            400,
+            json={
+                "errorMessages": ["Invalid payload"],
+                "errors": {"summary": "Summary is required"},
+            },
+        )
     )
 
     # Act & Assert
     with pytest.raises(BusinessRuleViolationException) as exc_info:
         await jira_repository.create_epic(
             summary="",  # Invalid because the summary is empty
-            description="Epic with invalid payload."
+            description="Epic with invalid payload.",
         )
 
     assert "Invalid payload" in str(exc_info.value)

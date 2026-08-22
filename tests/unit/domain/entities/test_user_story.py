@@ -2,7 +2,6 @@ import pytest
 from datetime import datetime
 
 from src.app.domain.entities import UserStory, IssueStatus, StoryStatus
-from src.app.domain.value_objects import IssueId, StoryPoints, Priority, LabelSet
 from src.app.domain.exceptions import BusinessRuleViolationException
 
 

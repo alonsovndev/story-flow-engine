@@ -4,6 +4,7 @@ from enum import Enum
 
 class PriorityLevel(int, Enum):
     """Priority levels ordered from highest to lowest."""
+
     HIGHEST = 1
     HIGH = 2
     MEDIUM = 3
@@ -15,9 +16,10 @@ class PriorityLevel(int, Enum):
 class Priority:
     """
     Value object representing issue priority.
-    
+
     Immutable - the priority level of an issue should not change once assigned.
     """
+
     name: str
     level: PriorityLevel
 
@@ -71,6 +73,6 @@ class Priority:
             return cls.medium()
         elif name_lower in ("low", "minor"):
             return cls.low()
-        elif name_lower in "lowest":
+        elif name_lower in ("lowest",):
             return cls.lowest()
         return cls(name=name, level=PriorityLevel.MEDIUM)

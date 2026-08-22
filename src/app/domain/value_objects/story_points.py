@@ -8,10 +8,11 @@ from src.app.domain.exceptions import BusinessRuleViolationException
 class StoryPoints:
     """
     Value object representing story points for estimation.
-    
+
     Immutable - story points should not change once assigned.
     Validates that points are non-negative.
     """
+
     value: int
 
     def __post_init__(self):

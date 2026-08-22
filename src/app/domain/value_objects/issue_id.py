@@ -1,15 +1,31 @@
+import re
 from dataclasses import dataclass
+
+from src.app.domain.exceptions import BusinessRuleViolationException
+
+# Jira issue keys look like '<PROJECT_KEY>-<NUMBER>', e.g. 'PROJ-123'.
+_ISSUE_KEY_PATTERN = re.compile(r"^[A-Z][A-Z0-9]*-\d+$")
 
 
 @dataclass(frozen=True)
 class IssueId:
     """
     Value object representing a Jira issue identifier.
-    
+
     Immutable by design - the identifier of an issue should not change.
     """
+
     key: str
     numeric_id: int
+
+    def __post_init__(self):
+        if not _ISSUE_KEY_PATTERN.match(self.key):
+            raise BusinessRuleViolationException(
+                "Invalid Jira issue key",
+                details=(
+                    f"'{self.key}' does not match '<PROJECT>-<number>' (e.g. PROJ-123)"
+                ),
+            )
 
     def __str__(self) -> str:
         return self.key
@@ -26,9 +42,20 @@ class IssueId:
     def from_string(cls, key: str) -> "IssueId":
         """
         Creates an IssueId from a string like 'PROJ-123'.
-        Note: Numeric ID will be 0 when created this way (full ID requires API response).
+
+        Raises:
+            BusinessRuleViolationException: If the key is empty or not a
+                valid Jira issue key.
         """
-        parts = key.rsplit("-", 1)
-        if len(parts) == 2 and parts[1].isdigit():
-            return cls(key=key, numeric_id=int(parts[1]))
-        return cls(key=key, numeric_id=0)
+        normalized = (key or "").strip()
+        if not _ISSUE_KEY_PATTERN.match(normalized):
+            raise BusinessRuleViolationException(
+                "Invalid Jira issue key",
+                details=(
+                    f"'{key}' does not match '<PROJECT>-<number>' (e.g. PROJ-123)"
+                ),
+            )
+        return cls(
+            key=normalized,
+            numeric_id=int(normalized.rsplit("-", 1)[1]),
+        )

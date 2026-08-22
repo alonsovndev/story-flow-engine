@@ -1,5 +1,6 @@
 import pytest
 
+from src.app.domain.exceptions import BusinessRuleViolationException
 from src.app.domain.value_objects import IssueId
 
 
@@ -14,10 +15,26 @@ class TestIssueIdCreation:
         assert issue.key == "PROJ-456"
         assert issue.numeric_id == 456
 
-    def test_from_string_invalid_key(self):
-        issue = IssueId.from_string("INVALID")
-        assert issue.key == "INVALID"
-        assert issue.numeric_id == 0
+    @pytest.mark.parametrize(
+        "invalid_key",
+        ["INVALID", "PROJ-", "-123", "proj-123", "PROJ-ABC", ""],
+        ids=[
+            "missing-number-suffix",
+            "missing-number",
+            "missing-project",
+            "lowercase",
+            "non-numeric-suffix",
+            "empty",
+        ],
+    )
+    def test_from_string_invalid_key_raises(self, invalid_key):
+        with pytest.raises(BusinessRuleViolationException):
+            IssueId.from_string(invalid_key)
+
+    def test_from_string_strips_surrounding_whitespace(self):
+        issue = IssueId.from_string("  PROJ-7  ")
+        assert issue.key == "PROJ-7"
+        assert issue.numeric_id == 7
 
 
 class TestIssueIdImmutability:

@@ -1,8 +1,9 @@
 import pytest
-from src.app.infrastructure.external.jira.jira_api_repository_impl import JiraApiRepositoryImpl
-from src.app.domain.entities import Epic
-from src.app.domain.value_objects import IssueId
+from src.app.infrastructure.external.jira.jira_api_repository_impl import (
+    JiraApiRepositoryImpl,
+)
 from src.app.domain.exceptions import UnauthorizedWorkspaceAccess
+
 
 @pytest.fixture
 def jira_repository():
@@ -16,6 +17,7 @@ def jira_repository():
         "project_key": "OPH",
     }
     return JiraApiRepositoryImpl(jira_config)
+
 
 @pytest.mark.asyncio
 async def test_project_key_restrictions(jira_repository):

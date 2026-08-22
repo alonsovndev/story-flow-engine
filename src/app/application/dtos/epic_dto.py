@@ -5,6 +5,7 @@ from typing import Optional, List
 
 class StoryDtoResponse(BaseModel):
     """Data Transfer Object for User Stories."""
+
     key: str
     numeric_id: int
     summary: str
@@ -24,6 +25,7 @@ class StoryDtoResponse(BaseModel):
 
 class EpicDtoResponse(BaseModel):
     """Data Transfer Object for Epics, including their stories."""
+
     key: str
     numeric_id: int
     summary: str

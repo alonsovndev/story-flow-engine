@@ -21,7 +21,8 @@ class AppConfig:
     - Loading environment variables from a `.env` file.
     - Parsing YAML configuration files based on the current environment.
     """
-    _instance: Optional['AppConfig'] = None
+
+    _instance: Optional["AppConfig"] = None
     _lock = Lock()
 
     def __init__(self):
@@ -30,7 +31,9 @@ class AppConfig:
         Sets the default environment and loads the configuration.
         """
         if AppConfig._instance is not None:
-            raise RuntimeError("Use AppConfiguration.instance() to get the singleton instance")
+            raise RuntimeError(
+                "Use AppConfiguration.instance() to get the singleton instance"
+            )
 
         self.env: str = DEFAULT_ENVIRONMENT
         self.config: Dict[str, Any] = {}
@@ -39,7 +42,7 @@ class AppConfig:
         self._initialized = True
 
     @classmethod
-    def instance(cls) -> 'AppConfig':
+    def instance(cls) -> "AppConfig":
         """
         Provides a thread-safe Singleton instance of AppConfiguration.
         """
@@ -81,7 +84,9 @@ class AppConfig:
         Sets the application environment using the `APP_ENV` variable.
         """
         try:
-            log.info(f"Loading environment variables from .env file...{Paths.ENV_FILE_PATH}")
+            log.info(
+                f"Loading environment variables from .env file...{Paths.ENV_FILE_PATH}"
+            )
             load_dotenv(Paths.ENV_FILE_PATH)
             env_value = os.environ.get(APP_ENV, DEFAULT_ENVIRONMENT)
             self.env = env_value.lower() if env_value else DEFAULT_ENVIRONMENT
@@ -103,7 +108,9 @@ class AppConfig:
             full_config_file_path = Paths.CONFIG_DIR / config_file
 
             if not full_config_file_path.exists():
-                raise FileNotFoundError(f"Configuration file not found: {full_config_file_path}")
+                raise FileNotFoundError(
+                    f"Configuration file not found: {full_config_file_path}"
+                )
 
             self.config = parse_config(path=str(full_config_file_path))
             log.info(f"Successfully loaded configuration from: {config_file}")
@@ -123,7 +130,7 @@ class AppConfig:
         Returns:
             The configuration value or default
         """
-        keys = key.split('.')
+        keys = key.split(".")
         value = self.config
 
         try:

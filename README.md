@@ -104,24 +104,19 @@ Detailed description here...
 src/app/
 ├── main.py                      # Entry point
 ├── config/                      # YAML-based configuration
-├── domain/                      # Entities, value objects, exceptions
-│   ├── entities/                # Epic, UserStory
-│   ├── value_objects/           # IssueId, Priority, StoryPoints, Label
-│   └── exceptions/              # BusinessRule, NotFound, Duplicate, etc.
-├── application/                 # Use cases, DTOs, repository interfaces
-│   ├── use_cases/               # GetEpicWithStories
-│   ├── dtos/                    # EpicDTO, StoryDTO
-│   ├── interfaces/              # JiraRepository (port)
-│   └── mappers/                 # Entity ↔ DTO mapping
-├── infrastructure/              # External adapters
-│   └── external/jira/           # httpx-based Jira REST client
-├── presentation/                # Typer CLI + InquirerPy menus
+├── core/domain/                 # Shared kernel: issue abstractions, value objects, exceptions
+├── features/                    # Vertical feature slices
+│   ├── epic/                    # Epic slice: entity, use cases, port, Jira adapter, commands
+│   └── story/                   # Story slice: entity, port, DTOs/mapper, Jira adapter
+├── infrastructure/
+│   └── external/jira/           # Shared Jira support (settings, datetime parsing)
+├── presentation/                # Typer CLI shell + InquirerPy menus
 └── shared/                      # Cross-cutting utilities
     ├── logging.py               # Structured logger (JSON or plain text)
     └── utils/                   # Retry decorator
 ```
 
-The project follows **Clean Architecture** with **Domain-Driven Design**. Entities use factory methods, value objects are immutable, and the application layer depends only on abstractions (ports), not concrete implementations.
+The project follows **Clean Architecture** with **Domain-Driven Design**, organized as vertical feature slices. Each feature (`epic`, `story`) owns its domain, application (use cases, ports, DTOs), and infrastructure layers; features collaborate only through each other's public ports and DTOs. Entities use factory methods, value objects are immutable, and the application layer depends only on abstractions, not concrete implementations.
 
 > Deep dive: [Architecture Overview](docs/architecture/overview.md)
 
@@ -130,7 +125,7 @@ The project follows **Clean Architecture** with **Domain-Driven Design**. Entiti
 ```bash
 pytest                  # run all tests
 pytest --cov=src        # with coverage
-pytest tests/unit/domain/   # specific path
+pytest tests/unit/features/epic/domain/   # specific path
 ```
 
 - **Style**: PEP 8, Google-style docstrings, full type hints

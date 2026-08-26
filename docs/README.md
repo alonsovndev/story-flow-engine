@@ -28,12 +28,13 @@ story-flow-engine/
 ├── docs/                  # This documentation
 ├── scripts/               # Helper scripts (run-cli)
 ├── src/app/               # Application source
-│   ├── domain/            # Business logic (entities, value objects)
-│   ├── application/       # Use cases, DTOs, repository interfaces
-│   ├── infrastructure/    # External adapters (Jira client)
-│   ├── presentation/      # CLI interface
+│   ├── config/            # AppConfig singleton + environment YAML files
+│   ├── core/domain/       # Shared kernel (issue abstractions, value objects, exceptions)
+│   ├── features/          # Vertical feature slices (epic, story)
+│   ├── infrastructure/    # Shared adapter support (Jira settings, parsing)
+│   ├── presentation/      # CLI shell (Typer commands + interactive menu)
 │   └── shared/            # Cross-cutting utilities (logging, retry)
-└── tests/                 # Unit and integration tests
+└── tests/                 # Unit and integration tests, mirrored per feature
 ```
 
 ## Tech Stack

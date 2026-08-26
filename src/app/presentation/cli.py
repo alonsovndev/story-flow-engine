@@ -1,19 +1,27 @@
-import typer
-import asyncio
-from src.app.application.use_cases.create_epic_from_markdown import (
-    CreateEpicFromMarkdown,
-)
-from src.app.application.use_cases.get_epic_with_stories import GetEpicWithStories
-from src.app.domain.exceptions import (
-    BusinessRuleViolationException,
-    EntityNotFoundException,
-)
-from src.app.infrastructure.external.jira.dependencies import get_jira_repository
-from InquirerPy import inquirer
 import os
+
+import typer
+from InquirerPy import inquirer
+
+from src.app.composition.container import Composition, build_composition
+from src.app.config.app_config import AppConfig
+from src.app.features.epic.presentation.commands import create_epic, fetch_epic
+from src.app.infrastructure.external.jira.settings import JiraSettings
 
 # Initialize Typer app with help when no command is provided
 app = typer.Typer(no_args_is_help=False)
+
+_composition: Composition | None = None
+
+
+def get_composition() -> Composition:
+    """Lazily build the composition root on first access."""
+    global _composition  # noqa: PLW0603
+    if _composition is None:
+        jira_config = AppConfig.instance().get_config("jira")
+        settings = JiraSettings.from_dict(jira_config)
+        _composition = build_composition(settings)
+    return _composition
 
 
 def show_welcome_message():
@@ -32,6 +40,33 @@ def show_welcome_message():
     typer.echo("")
     typer.echo("System ready.")
     typer.echo("")
+
+
+@app.command("fetch-epic")
+def fetch_epic_command(
+    issue_id: str = typer.Argument(..., help="Jira issue key, e.g. PROJ-123"),
+):
+    """Fetch an epic and its stories from Jira by key."""
+    fetch_epic(get_composition(), issue_id)
+
+
+@app.command("create-epic")
+def create_epic_command(
+    file_path: str = typer.Argument(..., help="Path to the epic markdown file"),
+):
+    """Create a new epic in Jira from a markdown file."""
+    create_epic(get_composition(), file_path)
+
+
+@app.callback(invoke_without_command=True)
+def main(ctx: typer.Context):
+    """Story Flow Engine: turn Markdown epics and stories into Jira issues.
+
+    Runs the interactive menu when no command is provided.
+    """
+    if ctx.invoked_subcommand is None:
+        show_welcome_message()
+        interactive_menu(skip_initial_prompt=False)
 
 
 def interactive_menu(skip_initial_prompt=False):
@@ -59,7 +94,7 @@ def interactive_menu(skip_initial_prompt=False):
 
         if menu_choice == "get_epic":
             jira_key = inquirer.text(message="Enter the JIRA key:").execute()
-            fetch_epic(jira_key)
+            fetch_epic(get_composition(), jira_key)
         elif menu_choice == "create_epic":
             file_path = inquirer.text(
                 message="Enter the path to the Epic file:"
@@ -67,80 +102,11 @@ def interactive_menu(skip_initial_prompt=False):
             if not file_path:
                 file_path = "data/EPIC-0-foundational/epic-0.md"
 
-            create_epic(file_path)
+            create_epic(get_composition(), file_path)
         elif menu_choice == "exit":
             typer.echo("Thanks for using Story Flow Engine! Have a great day!")
             break
 
 
-def fetch_epic(issue_id: str):
-    """
-    Fetch an epic and its stories from JIRA using the epic key.
-
-    Args:
-        issue_id (str): The key of the epic to retrieve (e.g. "PROJ-123").
-    """
-
-    async def main():
-        repository = get_jira_repository()
-        use_case = GetEpicWithStories(jira_repository=repository)
-        try:
-            dto = await use_case.execute(issue_id)
-            typer.echo("Epic Summary:")
-            typer.echo(f"Key: {dto.key}")
-            typer.echo(f"Summary: {dto.summary}")
-            typer.echo(f"Description: {dto.description}")
-            typer.echo("")
-            typer.echo(f"Stories ({len(dto.user_stories)}):")
-            for story in dto.user_stories:
-                status = f" [{story.status}]" if story.status else ""
-                typer.echo(f"  - {story.key}: {story.summary}{status}")
-        except EntityNotFoundException:
-            typer.echo(f"Epic not found: {issue_id}")
-        except BusinessRuleViolationException as e:
-            typer.echo(f"Error fetching epic: {e}")
-        except Exception as e:  # keep interactive session alive on unexpected errors
-            typer.echo(f"Unexpected error fetching epic: {e}")
-
-    # Use asyncio.run to handle the async call
-    asyncio.run(main())
-
-
-def create_epic(file_path: str):
-    """
-    Create a new epic in JIRA from an Epic markdown file.
-
-    Args:
-        file_path (str): Path to the markdown file describing the epic.
-    """
-
-    async def main():
-        repository = get_jira_repository()
-        use_case = CreateEpicFromMarkdown(jira_repository=repository)
-
-        try:
-            with open(file_path, "r") as file:
-                markdown_content = file.read()
-        except OSError as e:
-            # OSError covers missing, unreadable, and directory paths.
-            typer.echo(f"Cannot read file. Error: {e}")
-            return
-
-        try:
-            dto = await use_case.execute(markdown_content)
-        except BusinessRuleViolationException as e:
-            typer.echo(f"Invalid file or content. Error: {e}")
-            return
-
-        typer.echo("Epic Successfully Created!")
-        typer.echo(f"Key: {dto.key}")
-        typer.echo(f"Summary: {dto.summary}")
-        typer.echo(f"Description: {dto.description}")
-
-    # Use asyncio.run to handle the async call
-    asyncio.run(main())
-
-
 if __name__ == "__main__":
-    show_welcome_message()
-    interactive_menu(skip_initial_prompt=False)
+    app()

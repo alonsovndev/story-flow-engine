@@ -2,17 +2,33 @@
 
 ## Prerequisites
 
-- **Python 3.9+** — verify with `python --version`
-- **Git** — for cloning the repository
+- **Python 3.12+** — verify with `python --version`
 - **A Jira account** with API access — you'll need an [API token](https://id.atlassian.com/manage-profile/security/api-tokens)
+- **Git** — only for the from-source install
 
-## Step-by-Step
+## Option A: Install from PyPI (recommended)
+
+```bash
+pipx install devworkwire
+```
+
+`pipx` installs DevWorkWire in an isolated environment and puts the `dwire` command on your PATH. Plain `pip install devworkwire` also works but shares your active environment.
+
+Then configure your Jira credentials in a `.env` file in the directory where you run `dwire` (see [Configuration](configuration.md)) and start:
+
+```bash
+dwire
+```
+
+You should see the DevWorkWire welcome screen with an interactive menu.
+
+## Option B: From source (development)
 
 ### 1. Clone the repository
 
 ```bash
-git clone <repo-url>
-cd story-flow-engine
+git clone https://github.com/alonsovndev/devworkwire.git
+cd devworkwire
 ```
 
 ### 2. Create and activate a virtual environment
@@ -31,7 +47,7 @@ python -m venv .venv
 .venv\Scripts\activate
 ```
 
-### 3. Install dependencies
+### 3. Install in editable mode (runtime + dev dependencies)
 
 ```bash
 pip install -r requirements.txt
@@ -48,13 +64,12 @@ Edit `.env` with your Jira credentials. See [Configuration](configuration.md) fo
 ### 5. Verify the installation
 
 ```bash
-./scripts/run-cli
+dwire
 ```
 
-You should see the Story Flow Engine welcome screen with an interactive menu.
-![Story Flow Engine Welcome Screen](../images/story-cli-preview.png)
+You should see the DevWorkWire welcome screen with an interactive menu.
 
-If you see a `ModuleNotFoundError`, make sure your virtual environment is activated and dependencies are installed.
+If you see a `ModuleNotFoundError`, make sure your virtual environment is activated and the editable install completed.
 
 ## Next Steps
 

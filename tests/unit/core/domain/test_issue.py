@@ -1,7 +1,7 @@
 import pytest
 
-from src.app.core.domain.exceptions import InvalidStatusTransitionException
-from src.app.core.domain.issue import IssueStatus
+from devworkwire.core.domain.exceptions import InvalidStatusTransitionException
+from devworkwire.core.domain.issue import IssueStatus
 
 
 class TestIssueStatus:

@@ -1,9 +1,10 @@
 # Configuration
 
-Story Flow Engine uses a two-tier configuration system:
+DevWorkWire uses a three-tier configuration system:
 
-1. **`.env` file** — environment variables for secrets and environment selection
-2. **YAML config files** — structured settings loaded based on `APP_ENV`
+1. **`.env` file** — environment variables for secrets (never committed)
+2. **`config_{env}.yml`** — structured settings (logging, Jira connection) loaded based on `APP_ENV`
+3. **`devworkwire.yml`** — per-project provider config (provider selection, project key, field mappings)
 
 ## Environment Variables (`.env`)
 
@@ -21,7 +22,6 @@ cp .env.example .env
 | `JIRA_BASE_URL` | Your Jira instance URL | `https://your-domain.atlassian.net` |
 | `JIRA_EMAIL` | Email associated with your Jira account | `you@example.com` |
 | `JIRA_API_TOKEN` | API token from Atlassian | `ATATT3...` |
-| `JIRA_PROJECT_KEY` | Default Jira project key | `PROJ` |
 
 ### How `APP_ENV` Works
 
@@ -29,19 +29,19 @@ The value of `APP_ENV` determines which YAML config file is loaded:
 
 | `APP_ENV` | Config File Loaded | Use Case |
 |-----------|-------------------|----------|
-| `local` | `src/app/config/config_local.yml` | Local development |
-| `test` | `src/app/config/config_test.yml` | Running tests |
-| `dev` | `src/app/config/config_dev.yml` (create if needed) | Shared dev environment |
-| `prod` | `src/app/config/config_prod.yml` (create if needed) | Production |
+| `local` | `src/devworkwire/config/config_local.yml` | Local development |
+| `test` | `src/devworkwire/config/config_test.yml` | Running tests |
+| `dev` | `src/devworkwire/config/config_dev.yml` (create if needed) | Shared dev environment |
+| `prod` | `src/devworkwire/config/config_prod.yml` (create if needed) | Production |
 
 ## YAML Configuration
 
-The YAML files live in `src/app/config/` and provide structured settings. Here's what `config_local.yml` looks like:
+The YAML files live in `src/devworkwire/config/` and provide structured settings. Here's what `config_local.yml` looks like:
 
 ```yaml
 app:
-  name: "Story Flow Engine"
-  version: "1.0.0"
+  name: "DevWorkWire"
+  version: "0.1.0"
 
 logging:
   level: "debug"
@@ -57,7 +57,6 @@ jira:
   api_version: "3"
   timeout: 30
   max_retries: 3
-  project_key: "OPH"
 ```
 
 ### Logging Settings
@@ -80,19 +79,45 @@ Use `format_type: "text"` for local and container runs so logs are easy to read.
 | `jira.timeout` | Request timeout (seconds) | `30` |
 | `jira.max_retries` | Max retry attempts on failure | `3` |
 | `jira.rate_limit.requests_per_minute` | Rate limit threshold | `60` |
-| `jira.project_key` | Default project key for issue creation | `OPH` |
 
 The `!ENV ${VAR_NAME}` syntax in YAML files pulls values from environment variables. This keeps secrets out of committed config files.
+
+## Project Configuration (`devworkwire.yml`)
+
+This file tells DevWorkWire which provider serves the project and the project key in that provider. Place it in the directory where you run `dwire` (or point to it with `dwire --config path/to/file.yml`).
+
+Copy the example and adjust:
+
+```bash
+cp devworkwire.example.yml devworkwire.yml
+```
+
+```yaml
+provider: jira
+project_key: PROJ
+field_mappings:
+  story_points: customfield_10011
+```
+
+| Field | Description | Default |
+|-------|-------------|---------|
+| `provider` | Provider adapter to use (Phase 1: `jira` only) | **required** |
+| `project_key` | Project key in the tracker for issue creation | **required** |
+| `field_mappings.story_points` | Custom field ID for story points | `customfield_10011` |
+| `transition_overrides` | Map DevWorkWire transition names to provider-specific names | `{}` |
 
 ## Generating a Jira API Token
 
 1. Go to [Atlassian API tokens](https://id.atlassian.com/manage-profile/security/api-tokens)
 2. Click **Create API token**
-3. Give it a label (e.g., "Story Flow Engine")
+3. Give it a label (e.g., "DevWorkWire")
 4. Copy the token — you won't be able to see it again
 5. Paste it into `.env` as `JIRA_API_TOKEN`
 
 ## Troubleshooting
+
+**"Project configuration not found"**
+→ Create a `devworkwire.yml` in the directory where you run `dwire`. Start from `devworkwire.example.yml`.
 
 **"Configuration file not found"**
 → Check that `APP_ENV` matches an existing config file name. For `APP_ENV=local`, the file must be `config_local.yml`.

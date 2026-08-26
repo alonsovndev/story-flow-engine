@@ -1,18 +1,21 @@
 # CLI Reference
 
-Story Flow Engine provides an interactive menu-driven CLI with InquirerPy, plus direct invocation options for scripting.
+DevWorkWire provides an interactive menu-driven CLI with InquirerPy, plus direct invocation options for scripting.
 
 ## Launching the CLI
 
 ```bash
-# Using the convenience script
+# Installed from PyPI (recommended via pipx)
+dwire
+
+# From a source checkout: convenience script
 ./scripts/run-cli
 
-# Or directly
-python -m src.app.presentation.cli
+# Or directly as a module
+python -m devworkwire.presentation.cli
 ```
 
-On launch, you'll see the Story Flow Engine welcome screen followed by the main menu.
+On launch, you'll see the DevWorkWire welcome screen followed by the main menu.
 
 ## Interactive Menu
 

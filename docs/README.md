@@ -1,6 +1,6 @@
-# Story Flow Engine Documentation
+# DevWorkWire Documentation
 
-Welcome to the Story Flow Engine documentation. Pick your path:
+Welcome to the DevWorkWire documentation. Pick your path:
 
 ## For New Users
 
@@ -23,11 +23,11 @@ Welcome to the Story Flow Engine documentation. Pick your path:
 ## Project Structure
 
 ```
-story-flow-engine/
+devworkwire/
 ├── data/                  # Your epic and story markdown files
 ├── docs/                  # This documentation
 ├── scripts/               # Helper scripts (run-cli)
-├── src/app/               # Application source
+├── src/devworkwire/               # Application source
 │   ├── config/            # AppConfig singleton + environment YAML files
 │   ├── core/domain/       # Shared kernel (issue abstractions, value objects, exceptions)
 │   ├── features/          # Vertical feature slices (epic, story)

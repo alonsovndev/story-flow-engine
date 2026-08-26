@@ -1,7 +1,7 @@
 import pytest
 
-from src.app.core.domain.value_objects import Label, LabelSet
-from src.app.core.domain.exceptions import BusinessRuleViolationException
+from devworkwire.core.domain.value_objects import Label, LabelSet
+from devworkwire.core.domain.exceptions import BusinessRuleViolationException
 
 
 class TestLabelSetCreation:

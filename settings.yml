@@ -1,7 +1,7 @@
 version: 1
 
 project:
-  name: story-flow-engine
+  name: devworkwire
   root: /Users/alonso/Documents/Workspace/Alonsovndev/StoryFlowEngine/story-flow-engine
 
 defaults:

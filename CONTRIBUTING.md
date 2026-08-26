@@ -1,6 +1,6 @@
 # Contributing
 
-Thanks for your interest in contributing to Story Flow Engine!
+Thanks for your interest in contributing to DevWorkWire!
 
 ## How to Contribute
 

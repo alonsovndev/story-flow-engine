@@ -3,7 +3,7 @@ import logging
 
 import pytest
 
-from src.app.shared import log_config
+from devworkwire.shared import log_config
 
 
 @pytest.fixture(autouse=True)

@@ -1,8 +1,8 @@
 from datetime import datetime
 
-from src.app.core.domain.issue import IssueStatus
-from src.app.features.story.application.mappers import StoryDataMapper
-from src.app.features.story.domain import StoryStatus, UserStory
+from devworkwire.core.domain.issue import IssueStatus
+from devworkwire.features.story.application.mappers import StoryDataMapper
+from devworkwire.features.story.domain import StoryStatus, UserStory
 
 
 def test_to_dto_maps_all_fields():

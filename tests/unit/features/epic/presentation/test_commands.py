@@ -3,11 +3,11 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from src.app.composition.container import Composition
-from src.app.core.domain.issue import IssueStatus
-from src.app.features.epic.domain import Epic
-from src.app.features.epic.presentation import commands
-from src.app.features.story.domain import UserStory
+from devworkwire.composition.container import Composition
+from devworkwire.core.domain.issue import IssueStatus
+from devworkwire.features.epic.domain import Epic
+from devworkwire.features.epic.presentation import commands
+from devworkwire.features.story.domain import UserStory
 
 
 def make_epic(key: str = "OPH-1") -> Epic:
@@ -25,11 +25,8 @@ def make_epic(key: str = "OPH-1") -> Epic:
 
 @pytest.fixture
 def mock_composition():
-    """Build a Composition with mock repositories for command tests."""
-    return Composition(
-        epic_repository=AsyncMock(),
-        story_repository=AsyncMock(),
-    )
+    """Build a Composition with a mock WorkItemProvider for command tests."""
+    return Composition(work_item_provider=AsyncMock())
 
 
 class TestFetchEpic:
@@ -44,8 +41,8 @@ class TestFetchEpic:
             updated_at=datetime(2026, 1, 2),
             epic_key="OPH-1",
         )
-        mock_composition.epic_repository.get_epic.return_value = make_epic()
-        mock_composition.story_repository.get_stories_in_epic.return_value = [story]
+        mock_composition.work_item_provider.get_epic.return_value = make_epic()
+        mock_composition.work_item_provider.get_stories_in_epic.return_value = [story]
 
         commands.fetch_epic(mock_composition, "OPH-1")
 
@@ -56,7 +53,7 @@ class TestFetchEpic:
         assert "OPH-2" in out
 
     def test_not_found_prints_friendly_message(self, mock_composition, capsys):
-        mock_composition.epic_repository.get_epic.return_value = None
+        mock_composition.work_item_provider.get_epic.return_value = None
 
         commands.fetch_epic(mock_composition, "OPH-404")
 
@@ -69,11 +66,11 @@ class TestFetchEpic:
 
         out = capsys.readouterr().out
         assert "Error fetching epic" in out
-        mock_composition.epic_repository.get_epic.assert_not_called()
-        mock_composition.story_repository.get_stories_in_epic.assert_not_called()
+        mock_composition.work_item_provider.get_epic.assert_not_called()
+        mock_composition.work_item_provider.get_stories_in_epic.assert_not_called()
 
     def test_unexpected_error_keeps_session_alive(self, mock_composition, capsys):
-        mock_composition.epic_repository.get_epic.side_effect = RuntimeError("boom")
+        mock_composition.work_item_provider.get_epic.side_effect = RuntimeError("boom")
 
         commands.fetch_epic(mock_composition, "OPH-1")
 
@@ -93,7 +90,7 @@ class TestCreateEpic:
             "Problem statement.\n",
             encoding="utf-8",
         )
-        mock_composition.epic_repository.create_epic.return_value = Epic.create(
+        mock_composition.work_item_provider.create_epic.return_value = Epic.create(
             key="OPH-101",
             numeric_id=101,
             summary="EPIC-0 - Foundational Setup",
@@ -108,7 +105,7 @@ class TestCreateEpic:
         out = capsys.readouterr().out
         assert "Epic Successfully Created!" in out
         assert "OPH-101" in out
-        mock_composition.epic_repository.create_epic.assert_awaited_once_with(
+        mock_composition.work_item_provider.create_epic.assert_awaited_once_with(
             summary="EPIC-0 - Foundational Setup",
             description="Problem statement.",
         )
@@ -128,4 +125,4 @@ class TestCreateEpic:
 
         out = capsys.readouterr().out
         assert "Invalid file or content" in out
-        mock_composition.epic_repository.create_epic.assert_not_called()
+        mock_composition.work_item_provider.create_epic.assert_not_called()

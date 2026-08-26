@@ -1,9 +1,9 @@
 import pytest
 from datetime import datetime
 
-from src.app.core.domain.exceptions import BusinessRuleViolationException
-from src.app.core.domain.issue import IssueStatus
-from src.app.features.epic.domain import Epic
+from devworkwire.core.domain.exceptions import BusinessRuleViolationException
+from devworkwire.core.domain.issue import IssueStatus
+from devworkwire.features.epic.domain import Epic
 
 
 class TestEpicCreation:

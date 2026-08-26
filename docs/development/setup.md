@@ -61,11 +61,14 @@ def create(cls, key: str, summary: str) -> "Epic":
 ## Running the App
 
 ```bash
-# Interactive mode
+# Interactive mode (editable install provides the `dwire` command)
+dwire
+
+# Or from a source checkout
 ./scripts/run-cli
 
-# Direct module
-python -m src.app.presentation.cli
+# Or directly as a module
+python -m devworkwire.presentation.cli
 ```
 
 ## Environment Switching
@@ -84,7 +87,7 @@ For running tests, the test config is loaded automatically by test fixtures.
 When adding features, follow the existing vertical-slice structure — each feature owns its full stack:
 
 ```
-src/app/
+src/devworkwire/
 ├── core/
 │   └── domain/              # Shared kernel: issue abstractions, value objects, exceptions
 ├── features/

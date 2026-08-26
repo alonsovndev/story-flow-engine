@@ -1,6 +1,6 @@
 # Markdown Format Specification
 
-Story Flow Engine parses structured Markdown files to create Jira issues. This document defines the supported format for epics and user stories.
+DevWorkWire parses structured Markdown files to create Jira issues. This document defines the supported format for epics and user stories.
 
 ## Directory Convention
 

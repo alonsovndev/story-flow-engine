@@ -1,7 +1,8 @@
 import pytest
+from pathlib import Path
 from typer.testing import CliRunner
 
-from src.app.presentation import cli
+from devworkwire.presentation import cli
 
 runner = CliRunner()
 
@@ -49,3 +50,13 @@ class TestDirectCommands:
 
         assert result.exit_code == 0
         assert record_create == {"file_path": "data/epic.md"}
+
+    def test_config_option_sets_config_path(self, record_fetch, monkeypatch):
+        monkeypatch.setattr(cli, "_config_path", None)
+
+        result = runner.invoke(
+            cli.app, ["--config", "custom.yml", "fetch-epic", "PROJ-123"]
+        )
+
+        assert result.exit_code == 0
+        assert cli._config_path == Path("custom.yml")

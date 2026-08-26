@@ -1,7 +1,7 @@
 import pytest
 
-from src.app.core.domain.value_objects import Priority
-from src.app.core.domain.value_objects.priority import PriorityLevel
+from devworkwire.core.domain.value_objects import Priority
+from devworkwire.core.domain.value_objects.priority import PriorityLevel
 
 
 class TestPriorityCreation:

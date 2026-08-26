@@ -7,4 +7,4 @@ source .venv/bin/activate
 # pip install -r requirements.txt
 
 # Run the CLI with arguments
-python -m src.app.presentation.cli "$@"
+python -m devworkwire.presentation.cli "$@"

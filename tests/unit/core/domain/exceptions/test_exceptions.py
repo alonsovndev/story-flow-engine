@@ -1,4 +1,4 @@
-from src.app.core.domain.exceptions import (
+from devworkwire.core.domain.exceptions import (
     DomainException,
     EntityNotFoundException,
     InvalidStatusTransitionException,

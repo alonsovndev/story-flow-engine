@@ -1,25 +1,25 @@
 # Architecture Overview
 
-Story Flow Engine follows **Clean Architecture** principles combined with **Domain-Driven Design** (DDD) patterns, organized as **vertical feature slices**. The goal is to keep domain logic independent of external concerns (Jira API, CLI framework, logging), making the system testable, maintainable, and adaptable to change.
+DevWorkWire follows **Clean Architecture** principles combined with **Domain-Driven Design** (DDD) patterns, organized as **vertical feature slices**. The goal is to keep domain logic independent of external concerns (Jira API, CLI framework, logging), making the system testable, maintainable, and adaptable to change.
 
 ## Feature Slices
 
-Instead of one global layer stack, each business capability owns its full vertical slice under `src/app/features/`:
+Instead of one global layer stack, each business capability owns its full vertical slice under `src/devworkwire/features/`, collaborating through a single unified provider port:
 
 ```
-src/app/
-├── config/                      # AppConfig singleton + environment YAML files
+src/devworkwire/
+├── application/                 # Cross-feature ports (WorkItemProvider)
+├── config/                      # AppConfig singleton, ProjectConfig loader, environment YAML files
 ├── core/domain/                 # Shared kernel (issue types/statuses, value objects, exceptions)
 ├── features/
 │   ├── epic/                    # Epic slice
-│   │   ├── application/         # Use cases, ports, DTOs, mappers, markdown parsing
-│   │   ├── domain/              # Epic entity
-│   │   └── infrastructure/      # JiraEpicRepository + composition root
+│   │   ├── application/         # Use cases, DTOs, mappers, markdown parsing
+│   │   └── domain/              # Epic entity
 │   └── story/                   # Story slice
-│       ├── application/         # Ports, DTOs, mappers
-│       ├── domain/              # UserStory entity
-│       └── infrastructure/      # JiraStoryRepository + composition root
-├── infrastructure/external/jira/  # Shared Jira support (settings, datetime parsing)
+│       ├── application/         # DTOs, mappers
+│       └── domain/              # UserStory entity
+├── infrastructure/
+│   └── external/jira/           # Jira adapter (WorkItemProvider impl), settings, parsing
 ├── presentation/                # CLI shell (Typer commands + interactive menu)
 └── shared/                      # Cross-cutting utilities (logging, retry)
 ```
@@ -27,7 +27,7 @@ src/app/
 **Dependency rules:**
 
 1. Features depend on `core` and `shared` — never the other way around.
-2. Features never import each other's internals; the only allowed cross-feature dependency is **epic → story** (via story's port and DTOs/mappers).
+2. Features never import each other's internals; cross-feature collaboration uses the shared `WorkItemProvider` port or public DTOs/mappers.
 3. Dependencies point inward inside each slice: `domain` knows nothing about `application`, which knows nothing about `infrastructure`.
 
 ```mermaid
@@ -116,7 +116,7 @@ sequenceDiagram
     CLI-->>User: Display epic details
 ```
 
-## Core Kernel (`src/app/core/domain/`)
+## Core Kernel (`src/devworkwire/core/domain/`)
 
 Concepts shared by every feature. Completely framework-agnostic.
 
@@ -151,7 +151,7 @@ DomainException
 └── UnauthorizedWorkspaceAccess  # Cross-project access attempt
 ```
 
-## Epic Feature (`src/app/features/epic/`)
+## Epic Feature (`src/devworkwire/features/epic/`)
 
 Everything the epic capability needs, in one place.
 
@@ -201,21 +201,19 @@ class GetEpicWithStories:
 
 Note how the epic use case consumes the **story port** — cross-feature collaboration happens through interfaces, never through imports of story internals beyond its public API (`ports.py`, `dtos.py`, `mappers.py`).
 
-#### Repository Ports (`ports.py`)
+## Provider Port (`application/ports.py`)
 
-Abstract base classes defining the contracts for epic operations:
+A single `WorkItemProvider` ABC defines the boundary between DevWorkWire and any project tracker. Both the CLI and (later) the MCP server call this port; adapters behind it (Jira today, Linear/Azure DevOps later) are swappable without touching the core.
 
 ```python
-class EpicRepository(ABC):
-    @abstractmethod
+class WorkItemProvider(ABC):
     async def get_epic(self, issue_id: IssueId) -> Optional[Epic]: ...
-    @abstractmethod
     async def create_epic(self, summary: str, description: str) -> Epic: ...
-    @abstractmethod
     async def find_epics_by_project(self, project_key: str) -> List[Epic]: ...
+    async def get_stories_in_epic(self, epic_id: IssueId) -> List[UserStory]: ...
 ```
 
-Ports allow swapping implementations (mock for tests, different API client) without touching business logic.
+This is the "Provider Port" in the plan's hexagonal diagram. Only one adapter implements it today (`JiraWorkItemProvider`); the core service, CLI, and MCP tool definitions depend solely on the port.
 
 #### DTOs and Mappers
 
@@ -231,54 +229,49 @@ Epic entity → EpicDataMapper.to_epic_dto() → EpicDtoResponse
 
 `EpicMarkdownParser` extracts epic title/key/description from Markdown source files — an application concern feeding `CreateEpicFromMarkdown`.
 
-### Infrastructure (`infrastructure/jira_epic_repository.py`)
+### Infrastructure (`infrastructure/external/jira/work_item_provider.py`)
 
-Concrete implementation of `EpicRepository` using `httpx` for async HTTP calls:
+Concrete implementation of `WorkItemProvider` using `httpx` for async HTTP calls:
 
 ```python
-class JiraEpicRepository(EpicRepository):
-    def __init__(self, settings: JiraSettings):
+class JiraWorkItemProvider(WorkItemProvider):
+    def __init__(self, settings: JiraSettings, project_config: ProjectConfig):
         self.settings = settings
+        self.project_config = project_config
 
     async def get_epic(self, issue_id: IssueId) -> Optional[Epic]:
         url = f"{self.settings.base_url}/rest/api/3/issue/{issue_id.key}"
         ...
-        return map_epic(response.json())
+        return map_epic(response.json(), self._story_points_field)
 ```
 
-Module-level mapper functions (`map_epic`) convert raw JSON into domain entities via factory methods. `dependencies.py` is the composition root:
+Module-level mapper functions (`map_epic`, `map_user_story`) convert raw JSON into domain entities via factory methods, using `project_config.field_mappings` for custom fields.
 
-```python
-def get_epic_repository() -> JiraEpicRepository:
-    return JiraEpicRepository(JiraSettings.from_config())
-```
-
-## Story Feature (`src/app/features/story/`)
+## Story Feature (`src/devworkwire/features/story/`)
 
 Mirrors the epic layout at smaller scope:
 
 - **Domain**: `UserStory` entity with `create(key=..., epic_key=...)` factory.
-- **Application**: `StoryRepository` port, `StoryDtoResponse`/`CreateStoryDtoRequest` DTOs, `StoryDataMapper`.
-- **Infrastructure**: `JiraStoryRepository` implementing `get_stories_in_epic` (JQL search for children of an epic); remaining operations raise `NotImplementedError` until needed.
+- **Application**: `StoryDtoResponse`/`CreateStoryDtoRequest` DTOs, `StoryDataMapper`.
 
-The story feature has **no knowledge of the epic feature** — it exposes a port and DTOs that epic consumes.
+The story feature has **no knowledge of the epic feature** — it exposes DTOs that the use cases consume. Both features' read/write operations flow through the single `WorkItemProvider` port.
 
-## Shared Infrastructure Support (`src/app/infrastructure/external/jira/`)
+## Shared Infrastructure Support (`src/devworkwire/infrastructure/external/jira/`)
 
-Cross-feature plumbing used by both adapters:
+Cross-feature plumbing used by the adapter:
 
-- **`settings.py`** — `JiraSettings`: frozen dataclass holding `base_url`, `email`, `api_token`, `project_key`, `timeout`. Built via `from_dict()` (validates required keys, raising `BusinessRuleViolationException` when incomplete) or `from_config()` (reads the `jira` block from `AppConfig`).
+- **`settings.py`** — `JiraSettings`: frozen dataclass holding `base_url`, `email`, `api_token`, `timeout`. Built via `from_dict()` (validates required keys, raising `BusinessRuleViolationException` when incomplete) or `from_config()` (reads the `jira` block from `AppConfig`). Project selection lives in `ProjectConfig`.
+- **`work_item_provider.py`** — `JiraWorkItemProvider`: the single Jira adapter implementing `WorkItemProvider` for all work-item operations.
 - **`parsing.py`** — `parse_jira_datetime()` converts Jira's timestamp format into timezone-aware datetimes.
 
-## Configuration (`src/app/config/`)
+## Configuration (`src/devworkwire/config/`)
 
-Thread-safe `AppConfig` singleton that:
-1. Loads `.env` variables via `python-dotenv`
-2. Reads `APP_ENV` to select a YAML config file
-3. Provides `get_config("jira.timeout")` with dot-notation access
-4. Uses exponential backoff retry for config loading
+Two config layers work together:
 
-## Presentation Layer (`src/app/presentation/cli.py`)
+1. **`AppConfig`** singleton: loads `.env` variables via `python-dotenv`, reads `APP_ENV` to select a `config_{env}.yml` file (logging, Jira connection settings), provides `get_config("jira.timeout")` with dot-notation access.
+2. **`ProjectConfig`**: loads `devworkwire.yml` from the working directory (overridable with `--config`), declaring the provider, project key, and field mappings. Validated at startup; raises `BusinessRuleViolationException` on missing/unsupported values.
+
+## Presentation Layer (`src/devworkwire/presentation/cli.py`)
 
 A thin **shell** built with **Typer** and **InquirerPy**. It wires registered commands to feature presentation handlers but contains no business logic:
 
@@ -297,9 +290,9 @@ def main(ctx: typer.Context):
         interactive_menu()
 ```
 
-Direct commands delegate to `src/app/features/epic/presentation/commands.py`, which resolves repositories through the feature composition roots (`get_epic_repository()`, `get_story_repository()`). When invoked without a command, the interactive menu takes over.
+Direct commands delegate to `src/devworkwire/features/epic/presentation/commands.py`, which receives the composition root (holding a `WorkItemProvider`). When invoked without a command, the interactive menu takes over.
 
-## Shared Layer (`src/app/shared/`)
+## Shared Layer (`src/devworkwire/shared/`)
 
 Cross-cutting utilities independent of business logic.
 
@@ -313,17 +306,18 @@ Reusable helpers: `retry_decorator` (exponential backoff for transient failures)
 
 ## Dependency Injection
 
-Manual (no DI framework). Each feature owns its composition root in `infrastructure/dependencies.py`:
+Manual (no DI framework). A single composition root in `composition/container.py` wires the provider port:
 
 ```python
-def get_epic_repository() -> JiraEpicRepository:
-    return JiraEpicRepository(JiraSettings.from_config())
-
-def get_story_repository() -> JiraStoryRepository:
-    return JiraStoryRepository(JiraSettings.from_config())
+def build_composition(
+    settings: JiraSettings, project_config: ProjectConfig
+) -> Composition:
+    if project_config.provider == "jira":
+        provider = JiraWorkItemProvider(settings, project_config)
+    return Composition(work_item_provider=provider)
 ```
 
-Use cases receive ports through constructor injection; presentation handlers resolve concrete adapters through these factories.
+Use cases receive the provider port through constructor injection; presentation handlers resolve it through the `Composition` dataclass.
 
 ## DDD Patterns in Use
 
@@ -333,12 +327,12 @@ Use cases receive ports through constructor injection; presentation handlers res
 | **Shared Kernel** | `core/domain/` | Single home for concepts every feature needs |
 | **Factory Method** | `Epic.create()`, `UserStory.create()` | Ensures all invariants are checked before the object exists |
 | **Value Object** | `IssueId`, `Priority`, `StoryPoints`, `Label` | Immutable, self-validating, equality by value |
-| **Repository (Port)** | `EpicRepository`, `StoryRepository` ABCs | Decouple features from infrastructure |
+| **Repository (Port)** | `WorkItemProvider` ABC | Decouple application layer from infrastructure; one port for all providers |
 | **Entity** | `Epic`, `UserStory` | Objects with identity and lifecycle |
 | **Domain Exception** | `EntityNotFoundException`, etc. | Business-meaningful errors, not generic exceptions |
 | **DTO** | `EpicDtoResponse`, `StoryDtoResponse` | Clean boundary between layers |
 | **Mapper** | `EpicDataMapper`, `StoryDataMapper` | Transform between layers without leaking concerns |
-| **Composition Root** | Per-feature `dependencies.py` | Single place wiring ports to adapters |
+| **Composition Root** | `composition/container.py` | Single place wiring the provider port to the concrete adapter |
 
 ## Testing Architecture
 
@@ -347,22 +341,23 @@ Tests mirror the source structure — one test tree per slice:
 ```
 tests/
 ├── unit/
+│   ├── application/               # Port ABC tests
+│   ├── config/                    # ProjectConfig loader tests
 │   ├── core/
 │   │   └── domain/              # Value objects, exceptions, issue abstractions
 │   ├── features/
 │   │   ├── epic/
 │   │   │   ├── domain/          # Epic factory method tests
-│   │   │   ├── application/     # Use case tests with mocked ports
-│   │   │   ├── infrastructure/  # Project-key restriction tests
+│   │   │   ├── application/     # Use case tests with mocked provider
 │   │   │   └── presentation/    # Command handler tests
 │   │   └── story/
 │   │       ├── domain/          # UserStory factory method tests
 │   │       └── application/     # Mapper tests
+│   ├── infrastructure/          # Project-key restriction tests
 │   ├── presentation/            # Typer command registration tests
 │   └── shared/                  # Logging tests
 └── integration/
-    ├── epic/                    # JiraEpicRepository with respx mocking
-    └── story/                   # JiraStoryRepository with respx mocking
+    └── test_jira_work_item_provider.py  # Adapter with respx mocking
 ```
 
-Use case tests mock the repository **ports**. Adapter tests use `respx` to mock HTTP responses against the real repository implementations.
+Use case tests mock the `WorkItemProvider` port. Adapter tests use `respx` to mock HTTP responses against the real adapter implementation.

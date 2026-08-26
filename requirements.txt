@@ -1,28 +1,4 @@
-# Data validation
-pydantic>=2.0.0
-
-# Configuration
-python-dotenv>=1.0.0
-pyaml-env>=1.2.1
-
-# Testing
-pytest>=7.4.0
-pytest-asyncio>=0.23.0
-pytest-cov>=4.1.0
-pytest-mock>=3.11.0
-
-# API communication
-httpx>=0.25.0
-backoff>=2.2.1
-respx>=0.20.0
-
-# Jira Client
-jira>=3.5.0
-
-# Interactive CLI
-typer>=0.9.0
-InquirerPy
-
-# Dev tooling (lint, type-check)
-ruff>=0.8.0
-mypy>=1.13.0
+# Dependencies are declared in pyproject.toml.
+# Runtime deps live in [project.dependencies]; dev tooling in [project.optional-dependencies].dev.
+# This file exists so the documented `pip install -r requirements.txt` flow keeps working:
+-e .[dev]

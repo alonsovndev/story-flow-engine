@@ -3,10 +3,25 @@ import os
 import typer
 from InquirerPy import inquirer
 
+from src.app.composition.container import Composition, build_composition
+from src.app.config.app_config import AppConfig
 from src.app.features.epic.presentation.commands import create_epic, fetch_epic
+from src.app.infrastructure.external.jira.settings import JiraSettings
 
 # Initialize Typer app with help when no command is provided
 app = typer.Typer(no_args_is_help=False)
+
+_composition: Composition | None = None
+
+
+def get_composition() -> Composition:
+    """Lazily build the composition root on first access."""
+    global _composition  # noqa: PLW0603
+    if _composition is None:
+        jira_config = AppConfig.instance().get_config("jira")
+        settings = JiraSettings.from_dict(jira_config)
+        _composition = build_composition(settings)
+    return _composition
 
 
 def show_welcome_message():
@@ -32,7 +47,7 @@ def fetch_epic_command(
     issue_id: str = typer.Argument(..., help="Jira issue key, e.g. PROJ-123"),
 ):
     """Fetch an epic and its stories from Jira by key."""
-    fetch_epic(issue_id)
+    fetch_epic(get_composition(), issue_id)
 
 
 @app.command("create-epic")
@@ -40,7 +55,7 @@ def create_epic_command(
     file_path: str = typer.Argument(..., help="Path to the epic markdown file"),
 ):
     """Create a new epic in Jira from a markdown file."""
-    create_epic(file_path)
+    create_epic(get_composition(), file_path)
 
 
 @app.callback(invoke_without_command=True)
@@ -79,7 +94,7 @@ def interactive_menu(skip_initial_prompt=False):
 
         if menu_choice == "get_epic":
             jira_key = inquirer.text(message="Enter the JIRA key:").execute()
-            fetch_epic(jira_key)
+            fetch_epic(get_composition(), jira_key)
         elif menu_choice == "create_epic":
             file_path = inquirer.text(
                 message="Enter the path to the Epic file:"
@@ -87,7 +102,7 @@ def interactive_menu(skip_initial_prompt=False):
             if not file_path:
                 file_path = "data/EPIC-0-foundational/epic-0.md"
 
-            create_epic(file_path)
+            create_epic(get_composition(), file_path)
         elif menu_choice == "exit":
             typer.echo("Thanks for using Story Flow Engine! Have a great day!")
             break

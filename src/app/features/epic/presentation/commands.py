@@ -1,14 +1,15 @@
 """CLI command handlers for the epic feature.
 
-These functions are the presentation-layer entry points for epic flows. They
-are wired to the application use cases via the feature composition roots and
-are reused by both the interactive menu and the direct Typer commands.
+These functions are the presentation-layer entry points for epic flows.
+They receive a pre-built Container from the composition root, keeping the
+adapter choice fully behind the presentation boundary.
 """
 
 import asyncio
 
 import typer
 
+from src.app.composition.container import Composition
 from src.app.core.domain.exceptions import (
     BusinessRuleViolationException,
     EntityNotFoundException,
@@ -17,22 +18,21 @@ from src.app.features.epic.application.use_cases import (
     CreateEpicFromMarkdown,
     GetEpicWithStories,
 )
-from src.app.features.epic.infrastructure.dependencies import get_epic_repository
-from src.app.features.story.infrastructure.dependencies import get_story_repository
 
 
-def fetch_epic(issue_id: str):
+def fetch_epic(composition: Composition, issue_id: str):
     """
     Fetch an epic and its stories from JIRA using the epic key.
 
     Args:
+        composition: Pre-built composition root holding repository ports.
         issue_id: The key of the epic to retrieve (e.g. "PROJ-123").
     """
 
     async def main():
         use_case = GetEpicWithStories(
-            epic_repository=get_epic_repository(),
-            story_repository=get_story_repository(),
+            epic_repository=composition.epic_repository,
+            story_repository=composition.story_repository,
         )
         try:
             dto = await use_case.execute(issue_id)
@@ -56,16 +56,19 @@ def fetch_epic(issue_id: str):
     asyncio.run(main())
 
 
-def create_epic(file_path: str):
+def create_epic(composition: Composition, file_path: str):
     """
     Create a new epic in JIRA from an Epic markdown file.
 
     Args:
+        composition: Pre-built composition root holding repository ports.
         file_path: Path to the markdown file describing the epic.
     """
 
     async def main():
-        use_case = CreateEpicFromMarkdown(epic_repository=get_epic_repository())
+        use_case = CreateEpicFromMarkdown(
+            epic_repository=composition.epic_repository
+        )
 
         try:
             with open(file_path, "r") as file:

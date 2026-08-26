@@ -11,7 +11,7 @@ def record_fetch(monkeypatch):
     """Replace the epic fetch handler in the shell with a recorder."""
     calls = {}
 
-    def fake_fetch(issue_id: str):
+    def fake_fetch(composition, issue_id: str):
         calls["issue_id"] = issue_id
 
     monkeypatch.setattr(cli, "fetch_epic", fake_fetch)
@@ -23,7 +23,7 @@ def record_create(monkeypatch):
     """Replace the epic create handler in the shell with a recorder."""
     calls = {}
 
-    def fake_create(file_path: str):
+    def fake_create(composition, file_path: str):
         calls["file_path"] = file_path
 
     monkeypatch.setattr(cli, "create_epic", fake_create)
